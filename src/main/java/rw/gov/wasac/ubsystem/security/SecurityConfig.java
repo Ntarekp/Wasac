@@ -26,8 +26,14 @@ public class SecurityConfig {
     private final MustChangePasswordFilter mustChangePasswordFilter;
     private final CustomUserDetailsService userDetailsService;
 
-    private static final String[] PUBLIC_URLS = {
-            "/api/auth/**",
+    private static final String[] PUBLIC_AUTH_URLS = {
+            "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/reset-password",
+            "/api/auth/otp/**"
+    };
+
+    private static final String[] PUBLIC_DOCS_URLS = {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",
@@ -39,7 +45,8 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_URLS).permitAll()
+                        .requestMatchers(PUBLIC_AUTH_URLS).permitAll()
+                        .requestMatchers(PUBLIC_DOCS_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -9,6 +9,7 @@ import rw.gov.wasac.ubsystem.customer.Customer;
 import rw.gov.wasac.ubsystem.customer.CustomerService;
 import rw.gov.wasac.ubsystem.enums.EBillStatus;
 import rw.gov.wasac.ubsystem.exception.BadRequestException;
+import rw.gov.wasac.ubsystem.message.MessageService;
 import rw.gov.wasac.ubsystem.reading.MeterReadingRepository;
 import rw.gov.wasac.ubsystem.tariff.TariffService;
 
@@ -23,6 +24,7 @@ class BillServiceTest {
     @Mock private MeterReadingRepository readingRepository;
     @Mock private TariffService tariffService;
     @Mock private CustomerService customerService;
+    @Mock private MessageService messageService;
     @InjectMocks private BillService billService;
 
     @Test

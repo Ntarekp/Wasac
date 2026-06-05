@@ -30,11 +30,7 @@ public class MessageDispatchScheduler {
         for (Message message : pending) {
             try {
                 Customer customer = message.getCustomer();
-                String subject = switch (message.getMessageType()) {
-                    case "BILL_GENERATED" -> "Bill Generated";
-                    case "PAYMENT_COMPLETE" -> "Payment Complete";
-                    default -> "Notification";
-                };
+                String subject = notificationSubject(message.getMessageType());
                 emailService.sendNotification(customer.getEmail(), subject, message.getContent());
                 message.setSent(true);
                 messageRepository.save(message);
@@ -42,5 +38,15 @@ public class MessageDispatchScheduler {
                 log.error("Failed to dispatch message {}: {}", message.getId(), ex.getMessage());
             }
         }
+    }
+
+    private static String notificationSubject(String messageType) {
+        if ("BILL_GENERATED".equals(messageType)) {
+            return "Bill Generated";
+        }
+        if ("PAYMENT_COMPLETE".equals(messageType)) {
+            return "Payment Complete";
+        }
+        return "Notification";
     }
 }

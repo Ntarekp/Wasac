@@ -23,14 +23,14 @@ public class BillController {
     private final SecurityService securityService;
 
     @PostMapping("/generate")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR')")
     @Operation(summary = "Generate a bill from a meter reading")
     public ResponseEntity<Bill> generate(@Valid @RequestBody BillGenerationDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(billService.generateBill(dto));
     }
 
     @PostMapping("/generate-batch")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR')")
     @Operation(summary = "Generate bills for all readings in a billing month/year")
     public ResponseEntity<BillBatchResultDTO> generateBatch(@Valid @RequestBody BillBatchGenerationDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(billService.generateMonthlyBills(dto));

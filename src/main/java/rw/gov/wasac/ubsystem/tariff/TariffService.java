@@ -8,6 +8,7 @@ import rw.gov.wasac.ubsystem.enums.ETariffType;
 import rw.gov.wasac.ubsystem.exception.BadRequestException;
 import rw.gov.wasac.ubsystem.exception.ResourceNotFoundException;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -83,6 +84,20 @@ public class TariffService {
                 .orElseThrow(() -> new ResourceNotFoundException("No active tariff found for " + meterType));
     }
 
+    /**
+     * Resolves the tariff effective for a billing period (Task 4: future tariffs only).
+     */
+    public Tariff getTariffForBilling(EMeterType meterType, int billingMonth, int billingYear) {
+        LocalDate periodStart = LocalDate.of(billingYear, billingMonth, 1);
+        return tariffRepository
+                .findByMeterTypeAndActiveTrueAndEffectiveFromLessThanEqualOrderByVersionDesc(meterType, periodStart)
+                .stream()
+                .filter(t -> t.getEffectiveTo() == null || !t.getEffectiveTo().isBefore(periodStart))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No tariff effective for " + billingMonth + "/" + billingYear + " and meter type " + meterType));
+    }
+
     public List<TariffTier> getTiersForTariff(UUID tariffId) {
         return tierRepository.findByTariffIdOrderByFromUnit(tariffId);
     }
@@ -118,7 +133,10 @@ public class TariffService {
     }
 
     public double calculateAmount(EMeterType meterType, double consumption) {
-        Tariff tariff = getActiveTariff(meterType);
+        return calculateAmount(getActiveTariff(meterType), consumption);
+    }
+
+    public double calculateAmount(Tariff tariff, double consumption) {
         double base;
 
         if (tariff.getTariffType() == ETariffType.FLAT_RATE) {

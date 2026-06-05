@@ -17,11 +17,7 @@ public class AuthAccountEmailService {
 
     public void sendOtp(String toEmail, String code, EOtpPurpose purpose, int validityMinutes, int resendCooldownSeconds) {
         EmailService emailService = requireEmailService();
-        String subject = switch (purpose) {
-            case LOGIN -> "Login Verification Code";
-            case EMAIL_VERIFICATION -> "Email Verification Code";
-            case PASSWORD_RESET -> "Password Reset Code";
-        };
+        String subject = otpSubjectFor(purpose);
         String body = """
                 Dear user,
 
@@ -83,5 +79,15 @@ public class AuthAccountEmailService {
     public boolean isEmailAvailable() {
         EmailService emailService = emailServiceProvider.getIfAvailable();
         return emailService != null && emailService.isConfigured();
+    }
+
+    private static String otpSubjectFor(EOtpPurpose purpose) {
+        if (purpose == EOtpPurpose.LOGIN) {
+            return "Login Verification Code";
+        }
+        if (purpose == EOtpPurpose.EMAIL_VERIFICATION) {
+            return "Email Verification Code";
+        }
+        return "Password Reset Code";
     }
 }

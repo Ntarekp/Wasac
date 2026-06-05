@@ -22,7 +22,7 @@ public class PenaltyController {
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @Operation(summary = "Manually trigger late payment penalty application")
     public ResponseEntity<String> applyNow() {
-        penaltyService.applyLatePenalties();
+        penaltyService.applyLatePenaltiesNow();
         return ResponseEntity.ok("Late payment penalties applied successfully");
     }
 

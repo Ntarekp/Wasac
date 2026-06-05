@@ -1,12 +1,15 @@
 package rw.gov.wasac.ubsystem.bill;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import rw.gov.wasac.ubsystem.customer.Customer;
 import rw.gov.wasac.ubsystem.customer.CustomerService;
 import rw.gov.wasac.ubsystem.enums.EBillStatus;
 import rw.gov.wasac.ubsystem.exception.BadRequestException;
 import rw.gov.wasac.ubsystem.exception.ResourceNotFoundException;
+import rw.gov.wasac.ubsystem.message.MessageService;
 import rw.gov.wasac.ubsystem.meter.Meter;
 import rw.gov.wasac.ubsystem.reading.MeterReading;
 import rw.gov.wasac.ubsystem.reading.MeterReadingRepository;
@@ -14,8 +17,10 @@ import rw.gov.wasac.ubsystem.tariff.Tariff;
 import rw.gov.wasac.ubsystem.tariff.TariffService;
 
 import java.time.LocalDate;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -26,6 +31,10 @@ public class BillService {
     private final MeterReadingRepository readingRepository;
     private final TariffService tariffService;
     private final CustomerService customerService;
+    private final MessageService messageService;
+
+    @Value("${app.messaging.java-fallback:false}")
+    private boolean javaMessagingFallback;
 
     @Transactional
     public Bill generateBill(BillGenerationDTO dto) {
@@ -70,8 +79,9 @@ public class BillService {
                     reading.getReadingMonth() + "/" + reading.getReadingYear());
         }
 
-        Tariff tariff = tariffService.getActiveTariff(meter.getMeterType());
-        double totalAmount = tariffService.calculateAmount(meter.getMeterType(), reading.getConsumption());
+        Tariff tariff = tariffService.getTariffForBilling(
+                meter.getMeterType(), reading.getReadingMonth(), reading.getReadingYear());
+        double totalAmount = tariffService.calculateAmount(tariff, reading.getConsumption());
 
         String ref = "BILL-" + meter.getMeterNumber() + "-" +
                 reading.getReadingYear() + String.format("%02d", reading.getReadingMonth());
@@ -93,7 +103,9 @@ public class BillService {
                 .penaltyApplied(false)
                 .build();
 
-        return billRepository.save(bill);
+        Bill saved = billRepository.save(bill);
+        notifyBillGenerated(saved);
+        return saved;
     }
 
     public List<Bill> getAllBills() {
@@ -133,6 +145,7 @@ public class BillService {
     }
 
     public Bill updateBillPayment(Bill bill, double amountPaid) {
+        EBillStatus previousStatus = bill.getStatus();
         double newPaid = bill.getPaidAmount() + amountPaid;
         double newBalance = bill.getTotalAmount() - newPaid;
 
@@ -144,7 +157,42 @@ public class BillService {
         } else {
             bill.setStatus(EBillStatus.PARTIALLY_PAID);
         }
-        // PAID notification inserted by DB trigger (Task 6)
-        return billRepository.save(bill);
+
+        Bill saved = billRepository.save(bill);
+        if (saved.getStatus() == EBillStatus.PAID && previousStatus != EBillStatus.PAID) {
+            notifyPaymentComplete(saved);
+        }
+        return saved;
+    }
+
+    private void notifyBillGenerated(Bill bill) {
+        if (!javaMessagingFallback) {
+            return;
+        }
+        Customer customer = bill.getCustomer();
+        messageService.sendBillNotification(
+                customer,
+                formatBillingPeriod(bill.getBillingMonth(), bill.getBillingYear()),
+                bill.getTotalAmount(),
+                "BILL_GENERATED");
+    }
+
+    private void notifyPaymentComplete(Bill bill) {
+        if (!javaMessagingFallback) {
+            return;
+        }
+        Customer customer = bill.getCustomer();
+        messageService.sendBillNotification(
+                customer,
+                formatBillingPeriod(bill.getBillingMonth(), bill.getBillingYear()),
+                bill.getTotalAmount(),
+                "PAYMENT_COMPLETE");
+    }
+
+    private String formatBillingPeriod(int month, int year) {
+        String monthName = LocalDate.of(year, month, 1)
+                .getMonth()
+                .getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+        return monthName + "/" + year;
     }
 }

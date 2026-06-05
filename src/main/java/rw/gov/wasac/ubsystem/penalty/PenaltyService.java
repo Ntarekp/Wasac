@@ -2,6 +2,8 @@ package rw.gov.wasac.ubsystem.penalty;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +23,26 @@ public class PenaltyService {
 
     private final BillRepository billRepository;
     private final TariffService tariffService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void applyLatePenalties() {
+        applyLatePenaltiesNow();
+    }
+
+    @Transactional
+    public void applyLatePenaltiesNow() {
+        try {
+            jdbcTemplate.execute("CALL sp_apply_all_late_penalties()");
+            log.info("Late penalties applied via stored procedure sp_apply_all_late_penalties");
+        } catch (DataAccessException ex) {
+            log.warn("Stored procedure unavailable, applying penalties in Java: {}", ex.getMessage());
+            applyLatePenaltiesInJava();
+        }
+    }
+
+    private void applyLatePenaltiesInJava() {
         LocalDate today = LocalDate.now();
         List<Bill> overdueBills = billRepository.findAll().stream()
                 .filter(b -> Boolean.FALSE.equals(b.getPenaltyApplied())
