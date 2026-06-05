@@ -61,9 +61,7 @@ CREATE TABLE meter_readings (
     reading_year      INTEGER        NOT NULL,
     consumption       DOUBLE PRECISION NOT NULL,
     created_at        TIMESTAMP      NOT NULL,
-    CONSTRAINT uq_reading_meter_period UNIQUE (meter_id, reading_month, reading_year),
-    CONSTRAINT ck_meter_readings_non_negative CHECK (previous_reading >= 0 AND current_reading >= 0 AND consumption >= 0),
-    CONSTRAINT ck_meter_readings_period CHECK (reading_month BETWEEN 1 AND 12)
+    CONSTRAINT uq_reading_meter_period UNIQUE (meter_id, reading_month, reading_year)
 );
 
 CREATE TABLE tariffs (
@@ -79,13 +77,7 @@ CREATE TABLE tariffs (
     effective_from                DATE         NOT NULL,
     effective_to                  DATE,
     active                        BOOLEAN,
-    created_at                    TIMESTAMP    NOT NULL,
-    CONSTRAINT ck_tariffs_non_negative CHECK (
-        COALESCE(unit_price, 0) >= 0
-        AND service_charge >= 0
-        AND vat_percentage >= 0
-        AND late_payment_penalty_percentage >= 0
-    )
+    created_at                    TIMESTAMP    NOT NULL
 );
 
 CREATE TABLE tariff_tiers (
@@ -93,8 +85,7 @@ CREATE TABLE tariff_tiers (
     tariff_id      UUID           NOT NULL REFERENCES tariffs(id),
     from_unit      DOUBLE PRECISION NOT NULL,
     to_unit        DOUBLE PRECISION NOT NULL,
-    price_per_unit DOUBLE PRECISION NOT NULL,
-    CONSTRAINT ck_tariff_tiers_non_negative CHECK (from_unit >= 0 AND to_unit > from_unit AND price_per_unit >= 0)
+    price_per_unit DOUBLE PRECISION NOT NULL
 );
 
 CREATE TABLE bills (
@@ -114,14 +105,7 @@ CREATE TABLE bills (
     due_date            DATE,
     penalty_applied     BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at          TIMESTAMP    NOT NULL,
-    updated_at          TIMESTAMP,
-    CONSTRAINT ck_bills_period CHECK (billing_month BETWEEN 1 AND 12),
-    CONSTRAINT ck_bills_amounts_non_negative CHECK (
-        consumption >= 0
-        AND total_amount >= 0
-        AND paid_amount >= 0
-        AND outstanding_balance >= 0
-    )
+    updated_at          TIMESTAMP
 );
 
 CREATE TABLE payments (
@@ -132,8 +116,7 @@ CREATE TABLE payments (
     payment_date          DATE         NOT NULL,
     transaction_reference VARCHAR(255),
     status                VARCHAR(50)  NOT NULL,
-    created_at            TIMESTAMP    NOT NULL,
-    CONSTRAINT ck_payments_amount_non_negative CHECK (amount_paid > 0)
+    created_at            TIMESTAMP    NOT NULL
 );
 
 CREATE TABLE messages (
