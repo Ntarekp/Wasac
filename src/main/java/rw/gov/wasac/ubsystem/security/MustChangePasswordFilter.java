@@ -59,16 +59,38 @@ public class MustChangePasswordFilter extends OncePerRequestFilter {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return false;
         }
-        String path = request.getRequestURI();
-        if (path.equals("/api/auth/login")
+        String path = normalizePath(request.getRequestURI());
+
+        if (isPublicAuthPath(path) || isAllowedSelfServicePath(path)) {
+            return false;
+        }
+
+        return path.startsWith("/api/");
+    }
+
+    private boolean isPublicAuthPath(String path) {
+        return path.equals("/api/auth/login")
                 || path.equals("/api/auth/register")
                 || path.equals("/api/auth/reset-password")
-                || path.startsWith("/api/auth/otp/")) {
-            return false;
-        }
+                || path.equals("/api/auth/otp")
+                || path.startsWith("/api/auth/otp/");
+    }
+
+    private boolean isAllowedSelfServicePath(String path) {
         if (ALLOWED_PATHS.contains(path)) {
-            return false;
+            return true;
         }
-        return path.startsWith("/api/");
+        return path.startsWith("/api/auth/me/")
+                || path.startsWith("/api/auth/profile/")
+                || path.startsWith("/api/auth/change-password/");
+    }
+
+    private String normalizePath(String path) {
+        if (path == null || path.isBlank()) {
+            return "";
+        }
+        return path.length() > 1 && path.endsWith("/")
+                ? path.substring(0, path.length() - 1)
+                : path;
     }
 }
