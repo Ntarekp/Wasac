@@ -12,7 +12,7 @@ public class UserUpdateDTO {
     private String fullNames;
 
     @NotBlank(message = "Phone number is required")
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Invalid phone number")
+    @Pattern(regexp = "^\\+2507\\d{8}$", message = "Phone number must be in format +2507XXXXXXXX")
     private String phoneNumber;
 
     @Size(min = 6, message = "Password must be at least 6 characters")
