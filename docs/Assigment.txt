@@ -1,0 +1,100 @@
+1. INTEGRATED SITUATION
+The Water and Sanitation Corporation (WASAC) and Rwanda Energy Group (REG) are national utility companies responsible for the distribution of water and electricity in Rwanda. They serve thousands of customers across different regions.
+Each customer is assigned one or more utility meters that record monthly consumption. While water services are currently billed on a postpaid basis, electricity is provided using a prepaid model. To unify billing processes and improve customer experience, the utility company plans to transition electricity services to a postpaid system similar to water services.
+The current billing process is partly manual, which often results in billing errors, delayed invoices, and limited visibility for customers. To address these challenges, the utility company intends to develop a secure and automated Utility Billing System that will manage customers, meter readings, postpaid and prepaid billing, monthly bill generation, payments, and notifications.
+
+TASKS
+You have been hired as a Java Backend Developer to design and implement the backend of this system using Spring Boot and Advanced Java technologies, ensuring strict business rules, data integrity, and automated messaging.
+Task 1: User Management and Security (JWT)
+Implement a secure user management system using JWT-based authentication and authorization.
+Users must have the following Attributes
+•	Full Names
+•	Email (Username)
+•	Phone Number
+•	Password
+•	Status (Active / Inactive)
+Roles to be Implemented
+•	ROLE_ADMIN: Configure tariffs, approve bills, and manage users
+•	ROLE_OPERATOR: Capture meter readings
+•	ROLE_FINANCE: Approve bills and payments
+•	ROLE_CUSTOMER: View bills and payment history
+Functional Requirements
+•	Allow user signup and login
+•	Secure all endpoints except authentication endpoints
+
+Task 2: Customer and Meter Management
+Customer Management
+Create/Store and manage customer details with the following attributes:
+•	Full Names
+•	National ID (Unique)
+•	Email
+•	Phone Number
+•	Address
+•	Status (Active / Inactive)
+Business Rules
+•	Prevent duplicate customer registration
+•	Inactive customers cannot receive bills
+Meter Management
+Each customer may have one or more meters with the following attributes:
+•	Meter Number (Unique)
+•	Meter Type (Water / Electricity)
+•	Installation Date
+•	Status (Active / Inactive)
+
+Task 3: Meter Reading Management
+Allow operators to capture meter readings with the following information:
+•	Meter
+•	Previous Reading
+•	Current Reading
+•	Reading Date
+Business Rules
+•	Current reading must be greater than the previous reading
+•	Only one reading per meter per month/year is allowed
+•	Meter must be active
+Task 4: Tariff, Tax, and Penalty Configuration
+Allow administrators to configure:
+•	Consumption tariffs (flat-rate or tier-based)
+•	Fixed service charges
+•	VAT or other taxes
+•	Late payment penalties
+Business Rules
+•	Tariffs must be versioned
+•	New tariffs apply only to future billing cycles
+Task 5: Payment Processing
+Allow recording of customer payments with the following information:
+•	Bill Reference
+•	Amount Paid
+•	Payment Method
+•	Payment Date
+Business Rules
+•	Support partial and full payments
+•	Automatically update the outstanding balance
+•	Mark a bill as PAID when the balance reaches zero
+
+Task 6: Database Routines and Messaging
+Configure database-level routines (Trigger, Stored Procedure, or Cursor).
+Required Behaviours
+•	On bill generation, automatically insert a notification message
+•	On full payment, automatically update the bill status and notify the customer
+Message Format
+Dear ,
+Your <Month/Year> utility bill of <amount>FRW has been successfully processed
+
+Instructions
+Before starting implementation, design the Entity Relationship Diagram (ERD) for the expected database using a relational DBMS of your choice.
+Development Requirements
+•	The backend must be developed using Spring Boot.
+•	Spring Data JPA should be used to configure the database and generate APIs for backend implementation.
+•	Design a Spring Boot Flow Diagram showing the functionality of the system.
+•	After proper backend configuration, records may be added manually using:
+o	Postman
+o	Swagger
+o	Application Main Class
+o	DBMS-level insertion
+•	Document all APIs using Swagger UI.
+•	Implement authentication and authorization using JSON Web Token (JWT).
+•	Enforce all business rules specified in each task.
+•	Internet access, if available, may only be used for framework and language documentation.
+Note
+Students are not required to implement a frontend. Testing may be performed using Postman, Swagger UI, or sample data.
+

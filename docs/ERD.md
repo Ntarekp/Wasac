@@ -2,6 +2,8 @@
 
 **Assignment requirement:** Design an ERD before implementation.
 
+**DBML (dbdiagram.io):** Paste [`docs/ERD.dbml`](ERD.dbml) into [https://dbdiagram.io](https://dbdiagram.io) for an interactive diagram with sample records.
+
 ## Diagram
 
 ```mermaid

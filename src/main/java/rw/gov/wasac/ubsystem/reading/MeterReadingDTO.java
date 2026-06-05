@@ -21,5 +21,6 @@ public class MeterReadingDTO {
     private Double currentReading;
 
     @NotNull(message = "Reading date is required")
+    @PastOrPresent(message = "Reading date cannot be in the future")
     private LocalDate readingDate;
 }

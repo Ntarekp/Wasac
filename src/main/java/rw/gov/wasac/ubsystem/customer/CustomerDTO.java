@@ -11,6 +11,7 @@ public class CustomerDTO {
 
     @NotBlank(message = "National ID is required")
     @Size(min = 16, max = 16, message = "National ID must be 16 characters")
+    @Pattern(regexp = "^[0-9]{16}$", message = "National ID must be exactly 16 numeric digits")
     private String nationalId;
 
     @NotBlank(message = "Email is required")
@@ -18,6 +19,7 @@ public class CustomerDTO {
     private String email;
 
     @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Invalid phone number")
     private String phoneNumber;
 
     @NotBlank(message = "Address is required")

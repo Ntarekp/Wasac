@@ -13,17 +13,32 @@ CREATE TABLE customers (
 );
 
 CREATE TABLE users (
-    id           UUID PRIMARY KEY,
-    full_names   VARCHAR(255) NOT NULL,
-    email        VARCHAR(255) NOT NULL UNIQUE,
-    phone_number VARCHAR(255) NOT NULL,
-    password     VARCHAR(255) NOT NULL,
-    customer_id  UUID REFERENCES customers(id),
-    role         VARCHAR(50)  NOT NULL,
-    status       VARCHAR(50)  NOT NULL,
-    created_at   TIMESTAMP    NOT NULL,
-    updated_at   TIMESTAMP
+    id                   UUID PRIMARY KEY,
+    full_names           VARCHAR(255) NOT NULL,
+    email                VARCHAR(255) NOT NULL UNIQUE,
+    phone_number         VARCHAR(255) NOT NULL,
+    password             VARCHAR(255) NOT NULL,
+    customer_id          UUID REFERENCES customers(id),
+    role                 VARCHAR(50)  NOT NULL,
+    status               VARCHAR(50)  NOT NULL,
+    must_change_password BOOLEAN      NOT NULL DEFAULT FALSE,
+    email_verified       BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at           TIMESTAMP    NOT NULL,
+    updated_at           TIMESTAMP
 );
+
+CREATE TABLE otps (
+    id           UUID PRIMARY KEY,
+    email        VARCHAR(255) NOT NULL,
+    code_hash    VARCHAR(255) NOT NULL,
+    purpose      VARCHAR(50)  NOT NULL,
+    expires_at   TIMESTAMP    NOT NULL,
+    used         BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at   TIMESTAMP    NOT NULL,
+    last_sent_at TIMESTAMP    NOT NULL
+);
+
+CREATE INDEX idx_otp_email_purpose ON otps (email, purpose);
 
 CREATE TABLE meters (
     id                UUID PRIMARY KEY,

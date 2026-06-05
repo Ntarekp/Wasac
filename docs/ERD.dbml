@@ -1,0 +1,195 @@
+// Utility Billing System (WASAC/REG) — Database Schema
+// Assignment: ERD before implementation
+// Paste into https://dbdiagram.io to visualize
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table users {
+  id uuid [primary key]
+  full_names varchar [not null]
+  email varchar [not null, unique]
+  phone_number varchar [not null]
+  password varchar [not null, note: 'BCrypt hashed']
+  customer_id uuid [note: 'Optional — links ROLE_CUSTOMER to profile']
+  role varchar [not null, note: 'ROLE_ADMIN | ROLE_OPERATOR | ROLE_FINANCE | ROLE_CUSTOMER']
+  status varchar [not null, note: 'ACTIVE | INACTIVE']
+  must_change_password boolean [not null, default: false]
+  email_verified boolean [not null, default: false]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table customers {
+  id uuid [primary key]
+  full_names varchar [not null]
+  national_id varchar [not null, unique, note: '16 characters']
+  email varchar [not null, unique]
+  phone_number varchar [not null]
+  address varchar [not null]
+  status varchar [not null, note: 'ACTIVE | INACTIVE']
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table meters {
+  id uuid [primary key]
+  meter_number varchar [not null, unique]
+  meter_type varchar [not null, note: 'WATER | ELECTRICITY']
+  installation_date date [not null]
+  status varchar [not null, note: 'ACTIVE | INACTIVE']
+  customer_id uuid [not null]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table meter_readings {
+  id uuid [primary key]
+  meter_id uuid [not null]
+  previous_reading double [not null]
+  current_reading double [not null]
+  reading_date date [not null]
+  reading_month int [not null]
+  reading_year int [not null]
+  consumption double [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    (meter_id, reading_month, reading_year) [unique, name: 'uq_reading_meter_period']
+  }
+}
+
+Table tariffs {
+  id uuid [primary key]
+  name varchar [not null]
+  version int [not null]
+  meter_type varchar [not null, note: 'WATER | ELECTRICITY']
+  tariff_type varchar [not null, note: 'FLAT_RATE | TIER_BASED']
+  unit_price double [note: 'Required for FLAT_RATE']
+  service_charge double [not null]
+  vat_percentage double [not null]
+  late_payment_penalty_percentage double [not null]
+  effective_from date [not null]
+  effective_to date
+  active boolean
+  created_at timestamp [not null]
+}
+
+Table tariff_tiers {
+  id uuid [primary key]
+  tariff_id uuid [not null]
+  from_unit double [not null]
+  to_unit double [not null]
+  price_per_unit double [not null]
+}
+
+Table bills {
+  id uuid [primary key]
+  bill_reference varchar [not null, unique]
+  customer_id uuid [not null]
+  meter_id uuid [not null]
+  reading_id uuid [not null]
+  tariff_id uuid [not null, note: 'Tariff version frozen at bill generation']
+  billing_month int [not null]
+  billing_year int [not null]
+  consumption double [not null]
+  total_amount double [not null]
+  paid_amount double [not null]
+  outstanding_balance double [not null]
+  status varchar [not null, note: 'UNPAID | APPROVED | PARTIALLY_PAID | PAID | OVERDUE']
+  due_date date
+  penalty_applied boolean [not null, default: false]
+  created_at timestamp [not null]
+  updated_at timestamp
+
+  indexes {
+    (meter_id, billing_month, billing_year) [name: 'idx_bills_meter_period']
+  }
+}
+
+Table payments {
+  id uuid [primary key]
+  bill_id uuid [not null]
+  amount_paid double [not null]
+  payment_method varchar [not null, note: 'CASH | BANK_TRANSFER | MOBILE_MONEY | CARD']
+  payment_date date [not null]
+  transaction_reference varchar
+  status varchar [not null, note: 'PENDING | APPROVED | REJECTED']
+  created_at timestamp [not null]
+}
+
+Table messages {
+  id uuid [primary key]
+  customer_id uuid [not null]
+  content varchar(1000) [not null, note: 'Dear <name>, Your <Month/Year> utility bill of <amount>FRW...']
+  message_type varchar [not null, note: 'BILL_GENERATED | PAYMENT_COMPLETE']
+  sent boolean [not null, note: 'false until email scheduler dispatches']
+  created_at timestamp [not null]
+}
+
+Table otps {
+  id uuid [primary key]
+  email varchar [not null]
+  code_hash varchar [not null, note: 'BCrypt hashed 6-digit code']
+  purpose varchar [not null, note: 'LOGIN | EMAIL_VERIFICATION | PASSWORD_RESET']
+  expires_at timestamp [not null]
+  used boolean [not null, default: false]
+  created_at timestamp [not null]
+  last_sent_at timestamp [not null]
+
+  indexes {
+    (email, purpose) [name: 'idx_otp_email_purpose']
+  }
+}
+
+// --- Relationships ---
+
+Ref: users.customer_id > customers.id
+
+Ref: meters.customer_id > customers.id
+
+Ref: meter_readings.meter_id > meters.id
+
+Ref: tariff_tiers.tariff_id > tariffs.id
+
+Ref: bills.customer_id > customers.id
+Ref: bills.meter_id > meters.id
+Ref: bills.reading_id > meter_readings.id
+Ref: bills.tariff_id > tariffs.id
+
+Ref: payments.bill_id > bills.id
+
+Ref: messages.customer_id > customers.id
+
+// --- Sample records (for diagram preview) ---
+
+Records users(email, full_names, role, status, must_change_password) {
+  'kpntare@gmail.com', 'System Admin', 'ROLE_ADMIN', 'ACTIVE', true
+  'benmu91@gmail.com', 'Finance Officer', 'ROLE_FINANCE', 'ACTIVE', true
+  'Cabledie@gmail.com', 'Field Operator', 'ROLE_OPERATOR', 'ACTIVE', true
+  'devroom210@gmail.com', 'Test Customer', 'ROLE_CUSTOMER', 'ACTIVE', true
+}
+
+Records customers(full_names, national_id, email, phone_number, address, status) {
+  'Test Customer', '1199887766554433', 'devroom210@gmail.com', '+250780000004', 'Kigali, Gasabo', 'ACTIVE'
+}
+
+Records meters(meter_number, meter_type, status) {
+  'WTR-001-KGL', 'WATER', 'ACTIVE'
+  'ELC-001-KGL', 'ELECTRICITY', 'ACTIVE'
+}
+
+Records tariffs(name, version, meter_type, tariff_type, unit_price, service_charge, vat_percentage, active) {
+  'Water Flat Rate 2026', 1, 'WATER', 'FLAT_RATE', 450, 1500, 18, true
+}
+
+Records bills(bill_reference, billing_month, billing_year, total_amount, paid_amount, outstanding_balance, status) {
+  'BILL-WTR-001-KGL-202606', 6, 2026, 18500, 0, 18500, 'UNPAID'
+}
+
+Records payments(amount_paid, payment_method, status) {
+  5000, 'MOBILE_MONEY', 'PENDING'
+}
+
+Records messages(message_type, sent) {
+  'BILL_GENERATED', false
+  'PAYMENT_COMPLETE', false
+}

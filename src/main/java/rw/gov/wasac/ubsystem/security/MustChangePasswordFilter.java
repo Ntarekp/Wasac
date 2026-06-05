@@ -60,6 +60,12 @@ public class MustChangePasswordFilter extends OncePerRequestFilter {
             return false;
         }
         String path = request.getRequestURI();
+        if (path.equals("/api/auth/login")
+                || path.equals("/api/auth/register")
+                || path.equals("/api/auth/reset-password")
+                || path.startsWith("/api/auth/otp/")) {
+            return false;
+        }
         if (ALLOWED_PATHS.contains(path)) {
             return false;
         }

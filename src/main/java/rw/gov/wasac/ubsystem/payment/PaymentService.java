@@ -7,6 +7,7 @@ import rw.gov.wasac.ubsystem.bill.Bill;
 import rw.gov.wasac.ubsystem.bill.BillService;
 import rw.gov.wasac.ubsystem.enums.EPaymentStatus;
 import rw.gov.wasac.ubsystem.exception.BadRequestException;
+import jakarta.persistence.EntityManager;
 import rw.gov.wasac.ubsystem.exception.ResourceNotFoundException;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final BillService billService;
+    private final EntityManager entityManager;
 
     @Transactional
     public Payment recordPayment(PaymentDTO dto) {
@@ -63,8 +65,8 @@ public class PaymentService {
 
         payment.setStatus(EPaymentStatus.APPROVED);
         paymentRepository.save(payment);
-
-        billService.updateBillPayment(bill, payment.getAmountPaid());
+        entityManager.flush();
+        entityManager.refresh(bill);
         return payment;
     }
 

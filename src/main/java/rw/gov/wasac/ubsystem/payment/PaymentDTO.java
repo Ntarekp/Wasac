@@ -20,6 +20,7 @@ public class PaymentDTO {
     private EPaymentMethod paymentMethod;
 
     @NotNull(message = "Payment date is required")
+    @PastOrPresent(message = "Payment date cannot be in the future")
     private LocalDate paymentDate;
 
     private String transactionReference;
