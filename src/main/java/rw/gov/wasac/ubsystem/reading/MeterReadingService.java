@@ -20,37 +20,39 @@ public class MeterReadingService {
     public MeterReading captureReading(MeterReadingDTO dto) {
         Meter meter = meterService.getMeterById(dto.getMeterId());
 
-        // Business Rule: meter must be active
         meterService.validateMeterActive(dto.getMeterId());
 
         int month = dto.getReadingDate().getMonthValue();
         int year  = dto.getReadingDate().getYear();
 
-        // Business Rule: only one reading per meter per month/year
         if (readingRepository.existsByMeterIdAndReadingMonthAndReadingYear(dto.getMeterId(), month, year)) {
             throw new BadRequestException(
                     "A reading already exists for meter " + meter.getMeterNumber() +
                             " for " + month + "/" + year);
         }
 
-        // Get last reading value as previous
-        double previousReading = readingRepository
+        double expectedPrevious = readingRepository
                 .findTopByMeterIdOrderByReadingDateDesc(dto.getMeterId())
                 .map(MeterReading::getCurrentReading)
                 .orElse(0.0);
 
-        // Business Rule: current must be > previous
-        if (dto.getCurrentReading() <= previousReading) {
+        if (!dto.getPreviousReading().equals(expectedPrevious)) {
             throw new BadRequestException(
-                    "Current reading (" + dto.getCurrentReading() +
-                            ") must be greater than previous reading (" + previousReading + ")");
+                    "Previous reading (" + dto.getPreviousReading() +
+                            ") does not match the last recorded reading (" + expectedPrevious + ")");
         }
 
-        double consumption = dto.getCurrentReading() - previousReading;
+        if (dto.getCurrentReading() <= dto.getPreviousReading()) {
+            throw new BadRequestException(
+                    "Current reading (" + dto.getCurrentReading() +
+                            ") must be greater than previous reading (" + dto.getPreviousReading() + ")");
+        }
+
+        double consumption = dto.getCurrentReading() - dto.getPreviousReading();
 
         MeterReading reading = MeterReading.builder()
                 .meter(meter)
-                .previousReading(previousReading)
+                .previousReading(dto.getPreviousReading())
                 .currentReading(dto.getCurrentReading())
                 .readingDate(dto.getReadingDate())
                 .readingMonth(month)

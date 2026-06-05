@@ -7,7 +7,6 @@ import rw.gov.wasac.ubsystem.customer.CustomerService;
 import rw.gov.wasac.ubsystem.enums.EBillStatus;
 import rw.gov.wasac.ubsystem.exception.BadRequestException;
 import rw.gov.wasac.ubsystem.exception.ResourceNotFoundException;
-import rw.gov.wasac.ubsystem.message.MessageService;
 import rw.gov.wasac.ubsystem.meter.Meter;
 import rw.gov.wasac.ubsystem.reading.MeterReading;
 import rw.gov.wasac.ubsystem.reading.MeterReadingRepository;
@@ -15,9 +14,8 @@ import rw.gov.wasac.ubsystem.tariff.Tariff;
 import rw.gov.wasac.ubsystem.tariff.TariffService;
 
 import java.time.LocalDate;
-import java.time.format.TextStyle;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -28,19 +26,44 @@ public class BillService {
     private final MeterReadingRepository readingRepository;
     private final TariffService tariffService;
     private final CustomerService customerService;
-    private final MessageService messageService;
 
     @Transactional
     public Bill generateBill(BillGenerationDTO dto) {
         MeterReading reading = readingRepository.findById(dto.getReadingId())
                 .orElseThrow(() -> new ResourceNotFoundException("Reading not found: " + dto.getReadingId()));
+        return generateBillFromReading(reading);
+    }
 
+    @Transactional
+    public BillBatchResultDTO generateMonthlyBills(BillBatchGenerationDTO dto) {
+        List<MeterReading> readings = readingRepository.findByReadingMonthAndReadingYear(
+                dto.getBillingMonth(), dto.getBillingYear());
+
+        List<Bill> generated = new ArrayList<>();
+        int skipped = 0;
+
+        for (MeterReading reading : readings) {
+            try {
+                generated.add(generateBillFromReading(reading));
+            } catch (BadRequestException ex) {
+                skipped++;
+            }
+        }
+
+        return BillBatchResultDTO.builder()
+                .billingMonth(dto.getBillingMonth())
+                .billingYear(dto.getBillingYear())
+                .generatedCount(generated.size())
+                .skippedCount(skipped)
+                .bills(generated)
+                .build();
+    }
+
+    private Bill generateBillFromReading(MeterReading reading) {
         Meter meter = reading.getMeter();
 
-        // Validate customer is active
         customerService.validateCustomerActive(meter.getCustomer().getId());
 
-        // Check no duplicate bill
         if (billRepository.existsByMeterIdAndBillingMonthAndBillingYear(
                 meter.getId(), reading.getReadingMonth(), reading.getReadingYear())) {
             throw new BadRequestException("Bill already generated for this meter for " +
@@ -67,21 +90,10 @@ public class BillService {
                 .outstandingBalance(totalAmount)
                 .status(EBillStatus.UNPAID)
                 .dueDate(LocalDate.now().plusDays(30))
+                .penaltyApplied(false)
                 .build();
 
-        Bill saved = billRepository.save(bill);
-
-        // Notify customer on bill generation
-        String monthName = LocalDate.of(reading.getReadingYear(), reading.getReadingMonth(), 1)
-                .getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
-        messageService.sendBillNotification(
-                meter.getCustomer(),
-                monthName + "/" + reading.getReadingYear(),
-                totalAmount,
-                "BILL_GENERATED"
-        );
-
-        return saved;
+        return billRepository.save(bill);
     }
 
     public List<Bill> getAllBills() {
@@ -99,8 +111,8 @@ public class BillService {
 
     public Bill approveBill(UUID id) {
         Bill bill = getBillById(id);
-        if (bill.getStatus() == EBillStatus.PAID) {
-            throw new BadRequestException("Bill is already paid");
+        if (bill.getStatus() != EBillStatus.UNPAID) {
+            throw new BadRequestException("Only UNPAID bills can be approved");
         }
         bill.setStatus(EBillStatus.APPROVED);
         return billRepository.save(bill);
@@ -111,7 +123,15 @@ public class BillService {
                 .orElseThrow(() -> new ResourceNotFoundException("Bill not found with reference: " + ref));
     }
 
-    // Called internally by payment service
+    public void validateBillPayable(Bill bill) {
+        if (bill.getStatus() == EBillStatus.UNPAID) {
+            throw new BadRequestException("Bill must be approved before payment can be recorded");
+        }
+        if (bill.getStatus() == EBillStatus.PAID) {
+            throw new BadRequestException("Bill is already fully paid");
+        }
+    }
+
     public Bill updateBillPayment(Bill bill, double amountPaid) {
         double newPaid = bill.getPaidAmount() + amountPaid;
         double newBalance = bill.getTotalAmount() - newPaid;
@@ -121,9 +141,10 @@ public class BillService {
 
         if (newBalance <= 0) {
             bill.setStatus(EBillStatus.PAID);
-        } else if (newPaid > 0) {
+        } else {
             bill.setStatus(EBillStatus.PARTIALLY_PAID);
         }
+        // PAID notification inserted by DB trigger (Task 6)
         return billRepository.save(bill);
     }
 }

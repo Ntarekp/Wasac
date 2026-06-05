@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import rw.gov.wasac.ubsystem.enums.EStatus;
 import rw.gov.wasac.ubsystem.exception.BadRequestException;
 import rw.gov.wasac.ubsystem.exception.ResourceNotFoundException;
+import rw.gov.wasac.ubsystem.meter.MeterRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import java.util.UUID;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final MeterRepository meterRepository;
 
     public Customer createCustomer(CustomerDTO dto) {
         if (customerRepository.existsByNationalId(dto.getNationalId())) {
@@ -42,12 +44,35 @@ public class CustomerService {
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found: " + id));
     }
 
+    public java.util.Optional<Customer> findByEmail(String email) {
+        return customerRepository.findByEmail(email);
+    }
+
     public Customer updateCustomer(UUID id, CustomerDTO dto) {
         Customer customer = getCustomerById(id);
+
+        if (customerRepository.existsByNationalIdAndIdNot(dto.getNationalId(), id)) {
+            throw new BadRequestException("Customer with this National ID already exists");
+        }
+        if (customerRepository.existsByEmailAndIdNot(dto.getEmail(), id)) {
+            throw new BadRequestException("Customer with this email already exists");
+        }
+
         customer.setFullNames(dto.getFullNames());
+        customer.setNationalId(dto.getNationalId());
+        customer.setEmail(dto.getEmail());
         customer.setPhoneNumber(dto.getPhoneNumber());
         customer.setAddress(dto.getAddress());
         return customerRepository.save(customer);
+    }
+
+    public void deleteCustomer(UUID id) {
+        Customer customer = getCustomerById(id);
+        if (meterRepository.existsByCustomerId(id)) {
+            throw new BadRequestException(
+                    "Cannot delete customer with installed meters. Deactivate the customer instead.");
+        }
+        customerRepository.delete(customer);
     }
 
     public Customer updateStatus(UUID id, EStatus status) {

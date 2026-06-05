@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import rw.gov.wasac.ubsystem.meter.MeterService;
+import rw.gov.wasac.ubsystem.security.SecurityService;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +21,8 @@ import java.util.UUID;
 public class MeterReadingController {
 
     private final MeterReadingService readingService;
+    private final MeterService meterService;
+    private final SecurityService securityService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR')")
@@ -38,13 +42,16 @@ public class MeterReadingController {
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_FINANCE', 'ROLE_CUSTOMER')")
     @Operation(summary = "Get reading by ID")
     public ResponseEntity<MeterReading> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(readingService.getReadingById(id));
+        MeterReading reading = readingService.getReadingById(id);
+        securityService.verifyMeterAccess(reading.getMeter());
+        return ResponseEntity.ok(reading);
     }
 
     @GetMapping("/meter/{meterId}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_CUSTOMER')")
     @Operation(summary = "Get readings by meter")
     public ResponseEntity<List<MeterReading>> getByMeter(@PathVariable UUID meterId) {
+        securityService.verifyMeterAccess(meterService.getMeterById(meterId));
         return ResponseEntity.ok(readingService.getReadingsByMeter(meterId));
     }
 }

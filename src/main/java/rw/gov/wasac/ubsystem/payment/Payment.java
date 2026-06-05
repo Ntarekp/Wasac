@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import rw.gov.wasac.ubsystem.bill.Bill;
 import rw.gov.wasac.ubsystem.enums.EPaymentMethod;
+import rw.gov.wasac.ubsystem.enums.EPaymentStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,11 +37,16 @@ public class Payment {
 
     private String transactionReference;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EPaymentStatus status;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (status == null) status = EPaymentStatus.PENDING;
     }
 }

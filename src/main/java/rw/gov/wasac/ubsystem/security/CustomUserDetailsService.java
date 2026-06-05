@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
+import rw.gov.wasac.ubsystem.enums.EStatus;
 import rw.gov.wasac.ubsystem.user.UserRepository;
 
 import java.util.List;
@@ -20,6 +21,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .map(user -> new org.springframework.security.core.userdetails.User(
                         user.getEmail(),
                         user.getPassword(),
+                        user.getStatus() == EStatus.ACTIVE,
+                        true,
+                        true,
+                        true,
                         List.of(new SimpleGrantedAuthority(user.getRole().name()))
                 ))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));

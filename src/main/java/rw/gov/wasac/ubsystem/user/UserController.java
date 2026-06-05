@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import rw.gov.wasac.ubsystem.enums.EStatus;
+import rw.gov.wasac.ubsystem.security.SecurityService;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,12 +21,20 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final SecurityService securityService;
 
     @PostMapping
     @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @Operation(summary = "Create a new system user")
-    public ResponseEntity<User> createUser(@Valid @RequestBody UserDTO dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(dto));
+    @Operation(summary = "Create a new system user (staff receive a temporary password by email)")
+    public ResponseEntity<UserCreationResponse> createUser(@Valid @RequestBody UserDTO dto) {
+        UserService.UserCreationResult result = userService.createUser(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(UserCreationResponse.builder()
+                .user(result.user())
+                .temporaryPasswordEmailed(result.temporaryPassword() != null)
+                .message(result.temporaryPassword() != null
+                        ? "User created. Temporary credentials were sent to " + result.user().getEmail()
+                        : "User created successfully.")
+                .build());
     }
 
     @GetMapping
@@ -42,6 +51,13 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(summary = "Update user profile")
+    public ResponseEntity<User> updateUser(@PathVariable UUID id, @Valid @RequestBody UserUpdateDTO dto) {
+        return ResponseEntity.ok(userService.updateUser(id, dto));
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @Operation(summary = "Update user status")
@@ -51,9 +67,9 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @Operation(summary = "Delete a user")
+    @Operation(summary = "Delete a user (cannot delete yourself or the last admin)")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
-        userService.deleteUser(id);
+        userService.deleteUser(id, securityService.getCurrentUser().getId());
         return ResponseEntity.noContent().build();
     }
 }

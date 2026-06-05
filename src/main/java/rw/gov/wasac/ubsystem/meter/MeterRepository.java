@@ -11,5 +11,6 @@ public interface MeterRepository extends JpaRepository<Meter, UUID> {
     boolean existsByMeterNumber(String meterNumber);
     Optional<Meter> findByMeterNumber(String meterNumber);
     List<Meter> findByCustomerId(UUID customerId);
+    boolean existsByCustomerId(UUID customerId);
     List<Meter> findByStatus(EStatus status);
 }

@@ -8,6 +8,7 @@ import rw.gov.wasac.ubsystem.enums.ETariffType;
 import rw.gov.wasac.ubsystem.exception.BadRequestException;
 import rw.gov.wasac.ubsystem.exception.ResourceNotFoundException;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,6 +27,9 @@ public class TariffService {
         if (dto.getTariffType() == ETariffType.TIER_BASED &&
                 (dto.getTiers() == null || dto.getTiers().isEmpty())) {
             throw new BadRequestException("Tiers are required for TIER_BASED tariff");
+        }
+        if (dto.getTariffType() == ETariffType.TIER_BASED) {
+            validateTiers(dto.getTiers());
         }
 
         // Deactivate current active tariff of same meter type
@@ -81,6 +85,36 @@ public class TariffService {
 
     public List<TariffTier> getTiersForTariff(UUID tariffId) {
         return tierRepository.findByTariffIdOrderByFromUnit(tariffId);
+    }
+
+    public Tariff deactivateTariff(UUID id) {
+        Tariff tariff = getTariffById(id);
+        if (!Boolean.TRUE.equals(tariff.getActive())) {
+            throw new BadRequestException("Tariff is already inactive");
+        }
+        tariff.setActive(false);
+        tariff.setEffectiveTo(java.time.LocalDate.now());
+        return tariffRepository.save(tariff);
+    }
+
+    private void validateTiers(List<TariffDTO.TierDTO> tiers) {
+        List<TariffDTO.TierDTO> sorted = tiers.stream()
+                .sorted(Comparator.comparing(TariffDTO.TierDTO::getFromUnit))
+                .toList();
+
+        for (int i = 0; i < sorted.size(); i++) {
+            TariffDTO.TierDTO tier = sorted.get(i);
+            if (tier.getFromUnit() >= tier.getToUnit()) {
+                throw new BadRequestException(
+                        "Tier fromUnit (" + tier.getFromUnit() + ") must be less than toUnit (" + tier.getToUnit() + ")");
+            }
+            if (i > 0) {
+                TariffDTO.TierDTO previous = sorted.get(i - 1);
+                if (tier.getFromUnit() < previous.getToUnit()) {
+                    throw new BadRequestException("Tariff tiers must not overlap");
+                }
+            }
+        }
     }
 
     public double calculateAmount(EMeterType meterType, double consumption) {

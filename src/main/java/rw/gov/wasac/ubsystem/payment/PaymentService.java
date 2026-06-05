@@ -5,14 +5,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rw.gov.wasac.ubsystem.bill.Bill;
 import rw.gov.wasac.ubsystem.bill.BillService;
-import rw.gov.wasac.ubsystem.enums.EBillStatus;
+import rw.gov.wasac.ubsystem.enums.EPaymentStatus;
 import rw.gov.wasac.ubsystem.exception.BadRequestException;
 import rw.gov.wasac.ubsystem.exception.ResourceNotFoundException;
-import rw.gov.wasac.ubsystem.message.MessageService;
 
-import java.time.format.TextStyle;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -21,15 +18,11 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final BillService billService;
-    private final MessageService messageService;
 
     @Transactional
     public Payment recordPayment(PaymentDTO dto) {
         Bill bill = billService.getBillByReference(dto.getBillReference());
-
-        if (bill.getStatus() == EBillStatus.PAID) {
-            throw new BadRequestException("Bill is already fully paid");
-        }
+        billService.validateBillPayable(bill);
 
         if (dto.getAmountPaid() > bill.getOutstandingBalance()) {
             throw new BadRequestException(
@@ -44,26 +37,35 @@ public class PaymentService {
                 .paymentMethod(dto.getPaymentMethod())
                 .paymentDate(dto.getPaymentDate())
                 .transactionReference(dto.getTransactionReference())
+                .status(EPaymentStatus.PENDING)
                 .build();
 
-        Payment saved = paymentRepository.save(payment);
+        return paymentRepository.save(payment);
+    }
 
-        // Update bill balance
-        Bill updatedBill = billService.updateBillPayment(bill, dto.getAmountPaid());
+    @Transactional
+    public Payment approvePayment(UUID paymentId) {
+        Payment payment = getPaymentById(paymentId);
 
-        // Notify on full payment
-        if (updatedBill.getStatus() == EBillStatus.PAID) {
-            String monthYear = java.time.Month.of(bill.getBillingMonth())
-                    .getDisplayName(TextStyle.FULL, Locale.ENGLISH) + "/" + bill.getBillingYear();
-            messageService.sendBillNotification(
-                    bill.getCustomer(),
-                    monthYear,
-                    bill.getTotalAmount(),
-                    "PAYMENT_COMPLETE"
+        if (payment.getStatus() != EPaymentStatus.PENDING) {
+            throw new BadRequestException("Only PENDING payments can be approved");
+        }
+
+        Bill bill = payment.getBill();
+        billService.validateBillPayable(bill);
+
+        if (payment.getAmountPaid() > bill.getOutstandingBalance()) {
+            throw new BadRequestException(
+                    "Payment amount (" + payment.getAmountPaid() +
+                            ") exceeds outstanding balance (" + bill.getOutstandingBalance() + ")"
             );
         }
 
-        return saved;
+        payment.setStatus(EPaymentStatus.APPROVED);
+        paymentRepository.save(payment);
+
+        billService.updateBillPayment(bill, payment.getAmountPaid());
+        return payment;
     }
 
     public List<Payment> getAllPayments() {

@@ -22,19 +22,17 @@ public class PenaltyService {
     private final BillRepository billRepository;
     private final TariffService tariffService;
 
-    /**
-     * Runs daily at midnight.
-     * Finds all UNPAID / PARTIALLY_PAID bills past due date and applies the configured penalty.
-     */
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void applyLatePenalties() {
         LocalDate today = LocalDate.now();
         List<Bill> overdueBills = billRepository.findAll().stream()
-                .filter(b -> b.getDueDate() != null
+                .filter(b -> Boolean.FALSE.equals(b.getPenaltyApplied())
+                        && b.getDueDate() != null
                         && b.getDueDate().isBefore(today)
                         && (b.getStatus() == EBillStatus.UNPAID
-                        || b.getStatus() == EBillStatus.PARTIALLY_PAID))
+                        || b.getStatus() == EBillStatus.PARTIALLY_PAID
+                        || b.getStatus() == EBillStatus.APPROVED))
                 .toList();
 
         for (Bill bill : overdueBills) {
@@ -48,6 +46,7 @@ public class PenaltyService {
                 bill.setTotalAmount(Math.round(newTotal * 100.0) / 100.0);
                 bill.setOutstandingBalance(Math.round(newBalance * 100.0) / 100.0);
                 bill.setStatus(EBillStatus.OVERDUE);
+                bill.setPenaltyApplied(true);
                 billRepository.save(bill);
 
                 log.info("Penalty applied to bill {}: +{}FRW", bill.getBillReference(), penalty);

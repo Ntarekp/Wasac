@@ -55,4 +55,11 @@ public class TariffController {
     public ResponseEntity<List<TariffTier>> getTiers(@PathVariable UUID id) {
         return ResponseEntity.ok(tariffService.getTiersForTariff(id));
     }
+
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(summary = "Deactivate a tariff without creating a new version")
+    public ResponseEntity<Tariff> deactivate(@PathVariable UUID id) {
+        return ResponseEntity.ok(tariffService.deactivateTariff(id));
+    }
 }

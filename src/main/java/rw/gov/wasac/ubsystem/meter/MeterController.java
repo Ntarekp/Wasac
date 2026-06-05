@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import rw.gov.wasac.ubsystem.enums.EStatus;
+import rw.gov.wasac.ubsystem.security.SecurityService;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class MeterController {
 
     private final MeterService meterService;
+    private final SecurityService securityService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR')")
@@ -39,13 +41,16 @@ public class MeterController {
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_FINANCE', 'ROLE_CUSTOMER')")
     @Operation(summary = "Get meter by ID")
     public ResponseEntity<Meter> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(meterService.getMeterById(id));
+        Meter meter = meterService.getMeterById(id);
+        securityService.verifyMeterAccess(meter);
+        return ResponseEntity.ok(meter);
     }
 
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_CUSTOMER')")
     @Operation(summary = "Get meters by customer")
     public ResponseEntity<List<Meter>> getByCustomer(@PathVariable UUID customerId) {
+        securityService.verifyCustomerAccess(customerId);
         return ResponseEntity.ok(meterService.getMetersByCustomer(customerId));
     }
 

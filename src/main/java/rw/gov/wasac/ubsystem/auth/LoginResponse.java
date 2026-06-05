@@ -11,6 +11,9 @@ public class LoginResponse {
     private String fullNames;
     private String email;
     private ERole role;
+    private UUID customerId;
+    private boolean mustChangePassword;
+    private boolean emailVerified;
     private String token;
     private String tokenType = "Bearer";
 }

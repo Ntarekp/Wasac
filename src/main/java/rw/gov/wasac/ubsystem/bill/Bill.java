@@ -69,6 +69,9 @@ public class Bill {
 
     private LocalDate dueDate;
 
+    @Column(nullable = false)
+    private Boolean penaltyApplied;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
@@ -80,6 +83,7 @@ public class Bill {
         updatedAt = LocalDateTime.now();
         if (paidAmount == null) paidAmount = 0.0;
         if (status == null) status = EBillStatus.UNPAID;
+        if (penaltyApplied == null) penaltyApplied = false;
     }
 
     @PreUpdate

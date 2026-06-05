@@ -21,6 +21,7 @@ public class TariffDTO {
     private ETariffType tariffType;
 
     // Required for FLAT_RATE
+    @Positive(message = "Unit price must be positive")
     private Double unitPrice;
 
     @NotNull(message = "Service charge is required")
@@ -43,8 +44,8 @@ public class TariffDTO {
 
     @Data
     public static class TierDTO {
-        @NotNull private Double fromUnit;
-        @NotNull private Double toUnit;
-        @NotNull private Double pricePerUnit;
+        @NotNull @PositiveOrZero private Double fromUnit;
+        @NotNull @Positive private Double toUnit;
+        @NotNull @Positive private Double pricePerUnit;
     }
 }

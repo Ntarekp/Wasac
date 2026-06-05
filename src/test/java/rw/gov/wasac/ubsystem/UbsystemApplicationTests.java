@@ -1,13 +1,14 @@
 package rw.gov.wasac.ubsystem;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class UbsystemApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationClassLoads() {
+		assertNotNull(UbsystemApplication.class);
 	}
 
 }

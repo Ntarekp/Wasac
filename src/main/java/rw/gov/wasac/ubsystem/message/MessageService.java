@@ -29,7 +29,7 @@ public class MessageService {
                 .customer(customer)
                 .content(content)
                 .messageType(type)
-                .sent(true) // In production, would be false until dispatched via SMS/email gateway
+                .sent(false)
                 .build();
 
         Message saved = messageRepository.save(message);

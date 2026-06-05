@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import rw.gov.wasac.ubsystem.enums.EStatus;
+import rw.gov.wasac.ubsystem.security.SecurityService;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final SecurityService securityService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR')")
@@ -39,6 +41,7 @@ public class CustomerController {
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_FINANCE', 'ROLE_CUSTOMER')")
     @Operation(summary = "Get customer by ID")
     public ResponseEntity<Customer> getById(@PathVariable UUID id) {
+        securityService.verifyCustomerAccess(id);
         return ResponseEntity.ok(customerService.getCustomerById(id));
     }
 
@@ -54,5 +57,13 @@ public class CustomerController {
     @Operation(summary = "Update customer status")
     public ResponseEntity<Customer> updateStatus(@PathVariable UUID id, @RequestParam EStatus status) {
         return ResponseEntity.ok(customerService.updateStatus(id, status));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(summary = "Delete a customer without meters")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        customerService.deleteCustomer(id);
+        return ResponseEntity.noContent().build();
     }
 }
